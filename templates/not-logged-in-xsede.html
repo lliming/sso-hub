@@ -1,0 +1,18 @@
+{% extends "simple.html" %}
+{% block content %}
+     <div class="content-middle">
+             <h2>You are not logged in.</h2>
+             <p>Click the <b>Login with XSEDE</b> button above to begin.</p>
+
+             <p>You can login with any organization you like: your campus, XSEDE, Google, etc.<br>
+                However, you must have an XSEDE identity to use {{pagetitle}}.</p>
+
+             <ul>
+                <li>Your XSEDE identity must be linked to the organization you login with.</li>
+                <li>If you don't login with XSEDE and you haven't previously linked your XSEDE identity, 
+                    you can link your XSEDE identity after you login.</li>
+                <li>If you don't have an XSEDE identity, you can register with XSEDE and 
+                    then link your new XSEDE identity.</li>
+             </ul>
+     </div>
+{% endblock %}
