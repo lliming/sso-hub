@@ -1,6 +1,7 @@
 # OAuth SSO Hub
 This is a web app that demonstrates how an OAuth-based Single Sign-On Hub (SSO Hub)
-would work.
+would work. It assumes a set of SSH login servers configured with the OAuth PAM module
+from [oauth-ssh](https://github.com/XSEDE/oauth-ssh).
 
 This app is meant to be deployed as a [WSGI application](https://wsgi.readthedocs.io/en/latest/)
 using a standard Web server (e.g., Apache) as a host. The server is responsible for providing a
