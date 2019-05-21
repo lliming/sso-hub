@@ -6,6 +6,7 @@ import globus_sdk
 from globus_sdk import (GlobusError,GlobusAPIError)
 import json
 import time
+import re
 
 
 app = Flask(__name__)
@@ -23,9 +24,44 @@ def index():
                                 loginurl=url_for('login'),
                                 loginstat=loginstatus)
 
-    # If logged in, display XSEDE identity info and choice of login services
-    return render_template('choose-login-service.html',
+    # If logged in, display login servers for which the user has active tokens
+
+    # First get the list of servers
+    servers = get_server_list()
+    if (servers == []):
+         return render_template('empty-server-list.html',
+                                pagetitle=app.config['APP_DISPLAY_NAME'],
+                                loginstat=loginstatus)
+
+    # Build the table rows for displaying each login server
+    tokenrows = ''
+    othertokens = loginstatus["tokens"]["other_tokens"]
+    ntoken = 1
+    sshmatch = re.compile(r"/scopes/(.*)/ssh$")
+    for tokendata in othertokens:
+         # Make sure it's an SSH access token
+         m = sshmatch.search(tokendata["scope"])
+         if m:
+             # Ok, we know it's an SSH server token. Now look up its data in the serverlist
+             thisserver = lookup_server_by_scope(servers,tokendata["scope"])
+             if (thisserver is None):
+                  # If somehow it's not on the list, use the scope's hostname for both
+                  servername = m.group(1)
+                  displayname = m.group(1)
+             else:
+                  servername = thisserver["hostname"]
+                  displayname = thisserver["displayname"]
+             token=tokendata["access_token"]
+             tokenrows += '<tr><td><a class="token-copy" href="" onclick="copytoken(\'token-{}\')">Copy Token</a></td>'.format(ntoken)
+             tokenrows += '<td><b class="displayname">{}</b><br>{}</td>'.format(displayname,servername)
+             tokenrows += '<td><input class="token-display" type="text" id="token-{}" value="{}"></td></tr>'.format(ntoken,token)
+             ntoken += 1
+
+    # Display the server list and access tokens
+    return render_template('show-tokens.html',
          pagetitle=app.config['APP_DISPLAY_NAME'],
+         servers=json.dumps(servers,indent=3),
+         tokenrows=tokenrows,
          loginstat=loginstatus)
 
 
@@ -40,12 +76,20 @@ def login():
          code from Globus Auth to exchange for tokens, encoded in a query
          param
     """
+
+    # build the list of scopes to request access to, based on server list
+    servers = get_server_list()
+    requested_scopes='openid email profile'
+    requested_scopes += ' https://auth.globus.org/scopes/login1.leeandkristin.net/ssh'
+    requested_scopes += ' https://auth.globus.org/scopes/login2.leeandkristin.net/ssh'
+    # requested_scopes += ' https://auth.globus.org/scopes/login3.leeandkristin.net/ssh'
+    
     # the redirect URI, as a complete URI (not relative path)
     redirect_uri = url_for('login', _external=True)
 
     auth_client = load_app_client()
     auth_client.oauth2_start_flow(redirect_uri, 
-            requested_scopes='openid email profile')
+            requested_scopes=requested_scopes)
 
     # If there's no "code" query string parameter, we're in this route
     # starting a Globus Auth login flow.
@@ -66,6 +110,7 @@ def login():
                 userid=id_token['sub'],
                 identity=id_token['preferred_username'],
                 fullname=id_token['name'],
+                tokens=tokens_response.data,
                 is_authenticated=True
                 )
         return redirect(url_for('index'))
@@ -93,7 +138,19 @@ def logout():
 
     # Redirect the user to the Globus Auth logout page
     return redirect(globus_logout_url)
+    # Redirect the user to the index page
+    # return redirect(url_for('index'))
 
+
+@app.route("/list-servers")
+def listservers():
+    # Call get_login_status() to fill out the login status variables (for login/logout display)
+    loginstatus = get_login_status()
+
+    return render_template('privacy.html', 
+                           loginstat=loginstatus,
+                           pagetitle=app.config['APP_DISPLAY_NAME'],
+                           returnurl=url_for('index'))
 
 @app.route("/privacy")
 def privacy():
@@ -127,8 +184,37 @@ def get_login_status():
          loginstat["logoutlink"] = url_for('logout', _external=True)
          loginstat["fullname"] = str(session.get('fullname'))
          loginstat["identity"] = str(session.get('identity'))
+         loginstat["tokens"] = session.get('tokens')
     return loginstat
 
+def get_server_list():
+    # Make sure we know the filename of the serverlist config file
+    try:
+         listf = app.config['APP_SERVERLIST_FILE']
+    except:
+         return ['APP_SERVERLIST_FILE is not defined.']
+
+    # Open the file and load its contents as a JSON object
+    try:
+         with open(listf, 'r') as filehandle:  
+              servers = json.load(filehandle)
+    except json.JSONDecodeError:
+         return ['Serverlist file {} does not contain a JSON object.'.format(app.config['APP_SERVERLIST_FILE'])]
+    except:
+         return ['Serverlist file {} is not accessible.'.format(app.config['APP_SERVERLIST_FILE'])]
+
+    # Make certain it's a list
+    if isinstance(servers,(list,)):
+         return servers
+    else:
+         return ['Serverlist contents are not a list.']
+
+def lookup_server_by_scope(servers,scope):
+    # Scan the server list and return the set that has the matching scope 
+    for server in servers:
+        if (server["oauth_scope"] == scope):
+            return(server)
+    return(None)
 
 # actually run the app if this is called as a script
 if __name__ == '__main__':

@@ -1,0 +1,12 @@
+{% extends "simple.html" %}
+{% block content %}
+     <div class="content-middle">
+        <p>You are logged in with XSEDE identity <b>{{loginstat["identity"]}}</b>.</p>
+
+        <p>There was a problem loading the server list. No login servers!</p>
+
+        <p>Here are the tokens we have available:</p>
+
+        <pre>{{loginstat["tokens"]}}</pre>
+     </div>
+{% endblock %}

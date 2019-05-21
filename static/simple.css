@@ -129,13 +129,15 @@ a:active {
 	margin-bottom: 2em;
 }
 #navbar a.active {
+        text-decoration: none;
+        color: #fff;
         background-color: #6696ed;
-        padding: 0.25em 0.5em;
+        padding: 0.5em 0.75em;
         border-radius: 0.5em;
 }
 #navbar a.inactive {
         background-color: #004681;
-        padding: 0.25em 0.5em;
+        padding: 0.5em 0.75em;
         border-radius: 0.5em;
 }
 #navbar a:link {
@@ -151,12 +153,38 @@ a:active {
 	background: #6696ed;
         color: #fff;
 }
-#navbar a:active {
+
+a.token-copy {
+        background-color: #004681;
+        padding: 0.5em 0.75em;
+        border-radius: 0.5em;
+}
+a.token-copy:link {
         text-decoration: none;
-	background: #6696ed;
+        color: #fff;
+}
+a.token-copy:visited {
+        text-decoration: none;
+        color: #fff;
+}
+a.token-copy:hover {
+        text-decoration: none;
+        background-color: #6696ed;
         color: #fff;
 }
 
+tr {
+	vertical-align: text-top;
+}
+
+td {
+	padding: 4px;
+}
+
+b.displayname {
+	font-size: 1.5em;
+	color: #004681;
+}
 
 .oidc-data h2 {
         padding-top: 0.25em;
@@ -168,6 +196,11 @@ a:active {
 
 hr {
 	display: none;
+}
+
+.token-display {
+	position: absolute;
+	left: -9999px;
 }
 
 .content {
