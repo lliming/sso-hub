@@ -147,10 +147,64 @@ def listservers():
     # Call get_login_status() to fill out the login status variables (for login/logout display)
     loginstatus = get_login_status()
 
-    return render_template('privacy.html', 
+    # If not logged in, redirect to the index page
+    if not session.get('is_authenticated'):
+        return redirect(url_for('index'))
+
+    # If logged in, display login servers for which the user has active tokens
+    # First get the list of servers
+    servers = get_server_list()
+    if (servers == []):
+        return render_template('empty-server-list.html',
+                               pagetitle=app.config['APP_DISPLAY_NAME'],
+                               loginstat=loginstatus)
+
+    # Build the rows for an HTML table containing the server data
+    serverrows = ''
+    for server in servers:
+        serverrows += '<tr>\n<td>'
+        serverrows += '<a class="displayname" href="{}">'.format(url_for('activate',server=server["resourceid"]))
+        serverrows += server["displayname"]
+        serverrows += '</a><br>{}</td>\n</tr>\n'.format(server["hostname"])
+
+    # Render the list-servers page
+    return render_template('list-servers.html', 
+                           loginstat=loginstatus,
+                           pagetitle=app.config['APP_DISPLAY_NAME'],
+                           serverrows=serverrows,
+                           returnurl=url_for('index'))
+
+@app.route("/activate")
+def activate():
+    """
+    This is an activate page, and the server resource ID is in the request argument 'server'
+    """
+    # Call get_login_status() to fill out the login status variables (for login/logout display)
+    loginstatus = get_login_status()
+
+    # If not logged in, redirect to the index page
+    if not session.get('is_authenticated'):
+        return redirect(url_for('index'))
+
+    # Get the requested server ID
+    if 'server' not in request.args:
+        return redirect(url_for('listservers'))
+    server = request.args.get('server')
+
+    # Get the list of servers
+    servers = get_server_list()
+    if (servers == []):
+        return render_template('empty-server-list.html',
+                               pagetitle=app.config['APP_DISPLAY_NAME'],
+                               loginstat=loginstatus)
+
+    # For now, just display the privacy page
+    return render_template('privacy.html',
                            loginstat=loginstatus,
                            pagetitle=app.config['APP_DISPLAY_NAME'],
                            returnurl=url_for('index'))
+
+
 
 @app.route("/privacy")
 def privacy():

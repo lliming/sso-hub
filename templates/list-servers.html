@@ -1,0 +1,17 @@
+{% extends "simple.html" %}
+{% block content %}
+
+     <div class="content-middle">
+        <div id="navbar">
+             <p><a class="active" href="{{ url_for('listservers') }}">Server List</a>
+                <a class="inactive" href="{{ url_for('index') }}">Active Servers</a></p>
+        </div>
+
+         <p>Choose a server to activate a connection.</p>
+
+        <table border=0>
+          {{serverrows |safe}}
+        </table>
+
+     </div>
+{% endblock %}

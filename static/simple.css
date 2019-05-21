@@ -186,6 +186,27 @@ b.displayname {
 	color: #004681;
 }
 
+a.displayname {
+	font-size: 1.5em;
+	font-weight: bold;
+	color: #004681;
+	text-decoration: none;
+}
+a.displayname:link {
+        color: #004681;
+}
+a.displayname:visited {
+        color: #004681;
+}
+a.displayname:hover {
+        color: #6696ed;
+}
+a.displayname:active {
+        color: #6696ed;
+}
+
+
+
 .oidc-data h2 {
         padding-top: 0.25em;
 }
