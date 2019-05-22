@@ -52,6 +52,7 @@ def index():
         serverid = server["resourceid"]
 
         # Get username on this server, or use the XSEDE username as default
+        # NOTE: The local_username is currently a TBD, so this will always be the XSEDE username.
         if "local_username" in server:
             username = server["local_username"]
         else:
@@ -181,7 +182,7 @@ def activate():
 
     # Get the requested server ID
     if 'server' not in request.args:
-        return redirect(url_for('listservers'))
+        return redirect(url_for('index'))
     serverid = request.args.get('server')
 
     # Get the list of servers
@@ -252,16 +253,16 @@ def get_server_list():
     try:
          listf = app.config['APP_SERVERLIST_FILE']
     except:
-         return ['APP_SERVERLIST_FILE is not defined.']
+         return []
 
     # Open the file and load its contents as a JSON object
     try:
          with open(listf, 'r') as filehandle:  
               servers = json.load(filehandle)
     except json.JSONDecodeError:
-         return ['Serverlist file {} does not contain a JSON object.'.format(app.config['APP_SERVERLIST_FILE'])]
+         return []
     except:
-         return ['Serverlist file {} is not accessible.'.format(app.config['APP_SERVERLIST_FILE'])]
+         return []
 
     # Make certain it's a list
     if isinstance(servers,(list,)):
@@ -279,16 +280,9 @@ def get_server_list():
                     break
         return servers
     else:
-        return ['Serverlist contents are not a list.']
+        return []
 
     
-def lookup_server_by_scope(servers,scope):
-    # Scan the server list and return the set that has the matching scope 
-    for server in servers:
-        if (server["oauth_scope"] == scope):
-            return(server)
-    return(None)
-
 # actually run the app if this is called as a script
 if __name__ == '__main__':
     app.run(host='0.0.0.0',port=5000,debug=True,ssl_context=('./keys/server.crt', './keys/server.key'))
