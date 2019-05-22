@@ -77,12 +77,13 @@ def login():
          param
     """
 
-    # build the list of scopes to request access to, based on server list
-    servers = get_server_list()
-    requested_scopes='openid email profile'
-    requested_scopes += ' https://auth.globus.org/scopes/login1.leeandkristin.net/ssh'
-    requested_scopes += ' https://auth.globus.org/scopes/login2.leeandkristin.net/ssh'
-    # requested_scopes += ' https://auth.globus.org/scopes/login3.leeandkristin.net/ssh'
+    # If scopes doesn't exist or is empty, initialize it to the minimum.
+    if not session.get('scopes'):
+        session.update(scopes = 'openid profile email')
+
+    # Session scopes will either be minimum (set above) or will have the minumum PLUS
+    # extra ssh server scopes added by server activate feature
+    requested_scopes = session.get('scopes')
     
     # the redirect URI, as a complete URI (not relative path)
     redirect_uri = url_for('login', _external=True)
@@ -110,6 +111,7 @@ def login():
                 userid=id_token['sub'],
                 identity=id_token['preferred_username'],
                 fullname=id_token['name'],
+                scopes=requested_scopes,
                 tokens=tokens_response.data,
                 is_authenticated=True
                 )
@@ -121,6 +123,9 @@ def logout():
     - Destroy the session state.
     - Redirect the user to the Globus Auth logout page.
     """
+
+    # Revoke any ssh server tokens
+    # TBD
 
     # Destroy the session state
     session.clear()
@@ -189,7 +194,7 @@ def activate():
     # Get the requested server ID
     if 'server' not in request.args:
         return redirect(url_for('listservers'))
-    server = request.args.get('server')
+    serverid = request.args.get('server')
 
     # Get the list of servers
     servers = get_server_list()
@@ -198,12 +203,22 @@ def activate():
                                pagetitle=app.config['APP_DISPLAY_NAME'],
                                loginstat=loginstatus)
 
-    # For now, just display the privacy page
-    return render_template('privacy.html',
-                           loginstat=loginstatus,
-                           pagetitle=app.config['APP_DISPLAY_NAME'],
-                           returnurl=url_for('index'))
-
+    # Add the requested server's scope to the session scopes
+    for server in servers:
+        if (server['resourceid']==serverid):
+            requested_scopes = session.get('scopes')
+            requested_scopes += ' '+server['oauth_scope']
+            session.update(
+                userid=session.get('userid'),
+                identity=session.get('identity'),
+                fullname=session.get('fullname'),
+                tokens=session.get('tokens'),
+                scopes=requested_scopes,
+                is_authenticated=True
+            )
+            
+    # Start a login flow to get the new token
+    return redirect(url_for('login'))
 
 
 @app.route("/privacy")

@@ -23,7 +23,13 @@ function copytoken(tokenid) {
                 <a class="active" href="{{ url_for('index') }}">Active Servers</a></p>
         </div>
 
-        <p>You already have access tokens for the following login servers.</p>
+        {% if (tokenrows=='') %}
+
+        <p>You have no active servers. Activate a server using the server list.</p>
+
+        {% else %}
+
+        <p>You've activated the following login servers.</p>
 
         <table border=0>
           {{tokenrows |safe}}
@@ -31,6 +37,8 @@ function copytoken(tokenid) {
 
         <p>Click the Copy Token button next to the login server you're connecting to.<br>
            This copies your access token to the clipboard so you can paste it into your ssh client when prompted.</p>
+
+        {% endif %}
 
      </div>
 {% endblock %}
