@@ -33,29 +33,42 @@ def index():
                                 pagetitle=app.config['APP_DISPLAY_NAME'],
                                 loginstat=loginstatus)
 
+    # Get the XSEDE username to use as a default
+    match = re.search(r'([^@]*)@xsede.org',loginstatus["identity"])
+    if match:
+        xsedeusername = match.group(1)
+    else:
+        # User's effective identity isn't an XSEDE identity!
+        return render_template('not-xsede-identity.html',
+                                pagetitle=app.config['APP_DISPLAY_NAME'],
+                                loginstat=loginstatus)
+
     # Build the table rows for displaying each login server
     tokenrows = ''
-    othertokens = loginstatus["tokens"]["other_tokens"]
     ntoken = 1
-    sshmatch = re.compile(r"/scopes/(.*)/ssh$")
-    for tokendata in othertokens:
-         # Make sure it's an SSH access token
-         m = sshmatch.search(tokendata["scope"])
-         if m:
-             # Ok, we know it's an SSH server token. Now look up its data in the serverlist
-             thisserver = lookup_server_by_scope(servers,tokendata["scope"])
-             if (thisserver is None):
-                  # If somehow it's not on the list, use the scope's hostname for both
-                  servername = m.group(1)
-                  displayname = m.group(1)
-             else:
-                  servername = thisserver["hostname"]
-                  displayname = thisserver["displayname"]
-             token=tokendata["access_token"]
-             tokenrows += '<tr><td><a class="token-copy" href="" onclick="copytoken(\'token-{}\')">Copy Token</a></td>'.format(ntoken)
-             tokenrows += '<td><b class="displayname">{}</b><br>{}</td>'.format(displayname,servername)
-             tokenrows += '<td><input class="token-display" type="text" id="token-{}" value="{}"></td></tr>'.format(ntoken,token)
-             ntoken += 1
+    for server in servers:
+        servername = server["hostname"]
+        displayname = server["displayname"]
+        serverid = server["resourceid"]
+
+        # Get username on this server, or use the XSEDE username as default
+        if "local_username" in server:
+            username = server["local_username"]
+        else:
+            username = xsedeusername
+
+        # Is there an active token for this server?
+        if "access_token" in server:
+            token = server["access_token"]
+            tokenrows += '<tr>\n  <td><a class="token-copy" href="" onclick="copytoken(\'token-{}\')">Copy Token</a></td>\n'.format(ntoken)
+            tokenrows += '  <td><b class="displayname">{}</b><br>'.format(displayname)
+            tokenrows += '      <b class="command">ssh {}@{}</b></td>\n'.format(username,servername)
+            tokenrows += '  <td><input class="token-display" type="text" id="token-{}" value="{}"></td>\n</tr>\n'.format(ntoken,token)
+            ntoken += 1
+        else:
+            tokenrows += '<tr>\n  <td><a class="activate" href="{}">Activate</a></td>\n'.format(url_for('activate',server=serverid))
+            tokenrows += '  <td><b class="displayname">{}</b><br>{}</td>\n'.format(displayname,servername)
+            tokenrows += '  <td></td>\n</tr>\n'
 
     # Display the server list and access tokens
     return render_template('show-tokens.html',
@@ -120,12 +133,19 @@ def login():
 @app.route("/logout")
 def logout():
     """
+    - Revoke active tokens.
     - Destroy the session state.
     - Redirect the user to the Globus Auth logout page.
     """
 
-    # Revoke any ssh server tokens
-    # TBD
+    # Revoke any tokens
+    if session.get("is_authenticated"):
+        auth_client = load_app_client()
+        # First, revoke any "other tokens," which include SSH server tokens
+        for tokendata in session.get("tokens")["other_tokens"]:
+            auth_client.oauth2_revoke_token(tokendata["access_token"])
+        # Lastly, revoke the current Auth API access token
+        auth_client.oauth2_revoke_token(session.get("tokens")["access_token"])
 
     # Destroy the session state
     session.clear()
@@ -146,38 +166,6 @@ def logout():
     # Redirect the user to the index page
     # return redirect(url_for('index'))
 
-
-@app.route("/list-servers")
-def listservers():
-    # Call get_login_status() to fill out the login status variables (for login/logout display)
-    loginstatus = get_login_status()
-
-    # If not logged in, redirect to the index page
-    if not session.get('is_authenticated'):
-        return redirect(url_for('index'))
-
-    # If logged in, display login servers for which the user has active tokens
-    # First get the list of servers
-    servers = get_server_list()
-    if (servers == []):
-        return render_template('empty-server-list.html',
-                               pagetitle=app.config['APP_DISPLAY_NAME'],
-                               loginstat=loginstatus)
-
-    # Build the rows for an HTML table containing the server data
-    serverrows = ''
-    for server in servers:
-        serverrows += '<tr>\n<td>'
-        serverrows += '<a class="displayname" href="{}">'.format(url_for('activate',server=server["resourceid"]))
-        serverrows += server["displayname"]
-        serverrows += '</a><br>{}</td>\n</tr>\n'.format(server["hostname"])
-
-    # Render the list-servers page
-    return render_template('list-servers.html', 
-                           loginstat=loginstatus,
-                           pagetitle=app.config['APP_DISPLAY_NAME'],
-                           serverrows=serverrows,
-                           returnurl=url_for('index'))
 
 @app.route("/activate")
 def activate():
@@ -257,6 +245,9 @@ def get_login_status():
     return loginstat
 
 def get_server_list():
+    # Load the configured server list from the server config file, and then
+    # add any access tokens from the current session.
+
     # Make sure we know the filename of the serverlist config file
     try:
          listf = app.config['APP_SERVERLIST_FILE']
@@ -274,10 +265,23 @@ def get_server_list():
 
     # Make certain it's a list
     if isinstance(servers,(list,)):
-         return servers
-    else:
-         return ['Serverlist contents are not a list.']
+        # It is a list, so go ahead and add any active tokens to the relevant entries
 
+        # Any active ssh tokens will be in the other_tokens section of the token response
+        othertokens = session.get("tokens")["other_tokens"]
+
+        # We need n so we can change entries in the list that have active tokens
+        for n in range(len(servers)):
+            # Find any tokens that match this server's scope
+            for tok in othertokens:
+                if (tok["scope"] == servers[n]["oauth_scope"]):
+                    servers[n]["access_token"] = tok["access_token"]
+                    break
+        return servers
+    else:
+        return ['Serverlist contents are not a list.']
+
+    
 def lookup_server_by_scope(servers,scope):
     # Scan the server list and return the set that has the matching scope 
     for server in servers:

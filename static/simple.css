@@ -155,9 +155,15 @@ a:active {
 }
 
 a.token-copy {
+	display: inline-block;
+	text-align: center;
         background-color: #004681;
         padding: 0.5em 0.75em;
+	width: 6em;
         border-radius: 0.5em;
+        border: 2px;
+	border-style: solid;
+        border-color: #004681;
 }
 a.token-copy:link {
         text-decoration: none;
@@ -170,6 +176,33 @@ a.token-copy:visited {
 a.token-copy:hover {
         text-decoration: none;
         background-color: #6696ed;
+        border-color: #6696ed;
+        color: #fff;
+}
+
+a.activate {
+	display: inline-block;
+	text-align: center;
+        background-color: #ffffff;
+        padding: 0.5em 0.75em;
+	width: 6em;
+        border-radius: 0.5em;
+        border: 2px;
+	border-style: solid;
+        border-color: #004681;
+}
+a.activate:link {
+        text-decoration: none;
+        color: #000;
+}
+a.activate:visited {
+        text-decoration: none;
+        color: #000;
+}
+a.activate:hover {
+        text-decoration: none;
+        background-color: #6696ed;
+        border-color: #004681;
         color: #fff;
 }
 
@@ -181,8 +214,17 @@ td {
 	padding: 4px;
 }
 
+td.buttons {
+	width: 20em;
+}
+
 b.displayname {
 	font-size: 1.5em;
+	color: #004681;
+}
+
+b.command {
+	font-family: "Courier New", Courier, monospace;
 	color: #004681;
 }
 
@@ -273,9 +315,7 @@ hr {
 p.note {
 	background-color: #b2cee6;
         border-radius: 0.5em;
-	padding: 0.5em 1em;
-	margin-left: 5em;
-	margin-right: 5em;
+	padding: 1em 1.5em;
 	color: #000;
 }
 p.data {

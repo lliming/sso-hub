@@ -18,27 +18,20 @@ function copytoken(tokenid) {
 </script>
 
      <div class="content-middle">
-        <div id="navbar">
-             <p><a class="inactive" href="{{ url_for('listservers') }}">Server List</a>
-                <a class="active" href="{{ url_for('index') }}">Active Servers</a></p>
-        </div>
 
-        {% if (tokenrows=='') %}
-
-        <p>You have no active servers. Activate a server using the server list.</p>
-
-        {% else %}
-
-        <p>You've activated the following login servers.</p>
+        <p>Click <b>Activate</b> to get a token for a login server.<br>
+           After activating, you can open a connection by entering the displayed ssh command in a terminal window. You'll need a token to login. Click <b>Copy Token</b> to copy the token to the clipboard.</p>
 
         <table border=0>
           {{tokenrows |safe}}
         </table>
 
-        <p>Click the Copy Token button next to the login server you're connecting to.<br>
-           This copies your access token to the clipboard so you can paste it into your ssh client when prompted.</p>
-
-        {% endif %}
+        <p class="note">Click <b>Logout</b> to prevent further use of these tokens. Tokens will 
+                        remain active for two days unless you click <b>Logout</b>, even if you close 
+                        this browser window.<br>
+                        <br>
+                        When you click <b>Logout</b>, any current ssh sessions will remain open, but 
+                        new ssh connections using these tokens will be refused.</p>
 
      </div>
 {% endblock %}
