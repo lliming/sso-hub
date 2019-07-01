@@ -1,0 +1,19 @@
+{% extends "simple.html" %}
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    {% if session.preauthenticated %}
+    <div class="content">
+        <h2>Approve the Duo push</h2>
+        <script type="text/javascript" src="{{ url_for('static', filename='jquery.js') }}"></script>
+        <script type="text/javascript" src="{{ url_for('static', filename='Duo-Web-v2.js') }}"></script>
+            <script>
+                Duo.init({
+                'host': '{{ duohost }}',
+                'sig_request': '{{ sig_request }}',
+                'post_action': '{{ url_for('success') }}'
+                });
+            </script>
+        <iframe id="duo_iframe" width="620" height="330" frameborder="0"></iframe>
+    </div>
+    {% endif %}
+{% endblock %}s

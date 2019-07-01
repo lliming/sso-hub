@@ -7,7 +7,7 @@ from globus_sdk import (GlobusError,GlobusAPIError)
 import json
 import time
 import re
-
+import duo_web as duo
 
 app = Flask(__name__)
 app.config.from_pyfile('sso_hub.conf')
@@ -127,9 +127,9 @@ def login():
                 fullname=id_token['name'],
                 scopes=requested_scopes,
                 tokens=tokens_response.data,
-                is_authenticated=True
+                preauthenticated=True
                 )
-        return redirect(url_for('index'))
+        return redirect(url_for('mfa'))
 
 @app.route("/logout")
 def logout():
@@ -228,7 +228,7 @@ def get_login_status():
     # This function returns a dictionary containing login information for the current session.
     # It is used to populate the login section of the UI.
     loginstat = dict()
-    if not session.get('is_authenticated'):
+    if not (session.get('is_authenticated') or session.get('preauthenticated')):
          # prepare an empty status
          loginstat["status"] = False
          loginstat["loginlink"] = url_for('login')
@@ -282,6 +282,41 @@ def get_server_list():
     else:
         return []
 
+def grab_keys():
+    return {'akey': app.config['APP_DUO_AKEY'], 
+            'ikey': app.config['APP_DUO_IKEY'], 
+            'skey': app.config['APP_DUO_SKEY'],
+            'host': app.config['APP_DUO_APIHOST']}
+
+@app.route('/mfa', methods=['GET', 'POST'])
+def mfa():
+    # Call get_login_status() to fill out the login status variables (for login/logout display)
+    loginstatus = get_login_status()
+
+    result = grab_keys()
+    sec = duo.sign_request(result['ikey'], result['skey'], result['akey'], session['userid'])
+    if request.method == 'GET':
+        return render_template('duoframe.html', 
+                               pagetitle=app.config['APP_DISPLAY_NAME'],
+                               loginstat=loginstatus, 
+                               duohost=result['host'], 
+                               sig_request=sec)
+    if request.method == 'POST':
+        user = duo.verify_response(result['ikey'], result['skey'], result['akey'], request.args.get('sig_response'))
+        if user == session['userid']:
+            return render_template(url_for('mfa'), user=user)
+
+@app.route('/success', methods=['POST'])
+def success():
+    session.update(
+        userid=session.get('userid'),
+        identity=session.get('identity'),
+        fullname=session.get('fullname'),
+        tokens=session.get('tokens'),
+        scopes=session.get('scopes'),
+        is_authenticated=True
+    )
+    return redirect(url_for('index'))
     
 # actually run the app if this is called as a script
 if __name__ == '__main__':
