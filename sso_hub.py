@@ -33,12 +33,12 @@ def index():
                                 pagetitle=app.config['APP_DISPLAY_NAME'],
                                 loginstat=loginstatus)
 
-    # Get the XSEDE username to use as a default
-    match = re.search(r'([^@]*)@xsede.org',loginstatus["identity"])
+    # Get the ACCESS-CI username to use as a default
+    match = re.search(r'([^@]*)@access-ci.org',loginstatus["identity"])
     if match:
         xsedeusername = match.group(1)
     else:
-        # User's effective identity isn't an XSEDE identity!
+        # User's effective identity isn't an ACCESS-CI identity!
         return render_template('not-xsede-identity.html',
                                 pagetitle=app.config['APP_DISPLAY_NAME'],
                                 loginstat=loginstatus)
